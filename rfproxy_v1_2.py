@@ -3,7 +3,7 @@ import logging
 
 import pymongo as mongo
 
-from rfofmsg_v1_2 import *
+from ofinterface import *
 
 import rflib.ipc.IPC as IPC
 import rflib.ipc.ryu_MongoIPC as MongoIPC
@@ -92,63 +92,23 @@ ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, str(ID))
 table = Table()
 datapaths = Datapaths()
 
-# Flow installation methods
-def flow_config(dp_id, operation_id):
-  dp = datapaths.get(dp_id)
-  ofm = create_config_msg(dp, operation_id)
-  dp.send_msg(ofm)
-  log.info("ofp_flow_mod(config) was sent to datapath (dp_id=%s)",
-           dpid_to_str(dp_id))
-
-def flow_add(dp_id, address, netmask, src_hwaddress, dst_hwaddress, dst_port):
-  netmask_int = netmask_prefix(netmask)
-  address_int = ipv4_to_int(address)
-  src_hwaddress_bin = haddr_to_bin(src_hwaddress)
-  dst_hwaddress_bin = haddr_to_bin(dst_hwaddress)
-  dp = datapaths.get(dp_id)
-  log.info("mask: %s netmask_int: %d", netmask, netmask_int) 
-  ofm = create_flow_install_msg(dp=dp, ip=address_int, mask=netmask_int, 
-                                srcMac=src_hwaddress_bin,
-                                dstMac=dst_hwaddress_bin, dstPort=dst_port)
-  dp.send_msg(ofm)
-  log.info("ofp_flow_mod(add) was sent to datapath (dp_id=%s), (addr=%s), "
-           "(dst_port=%d)", dpid_to_str(dp_id), address, dst_port)
-
-def flow_delete(dp_id, address, netmask, src_hwaddress):
-  netmask_int = netmask_prefix(netmask)
-  address_int = ipv4_to_int(address)
-  src_hwaddress_bin = haddr_to_bin(src_hwaddress)
-  dp = datapaths.get(dp_id)
-  ofm = create_flow_remove_msg(dp, ip=address_int,
-        mask=netmask_int, srcMac=src_hwaddress_bin)
-  dp.send_msg(ofm)
-  log.info("ofp_flow_mod(del) was sent to datapath (dp_id=%s), (addr=%s)", 
-           dpid_to_str(dp_id), address)
-
-  ofm2 = create_temporary_flow_msg(datapaths.get(dp_id), ip=address_int,
-                                   mask=netmask_int, srcMac=src_hwaddress)
-  dp.send_msg(ofm2)
-  log.info("ofp_flow_mod(tmp) was sent to datapath (dp_id=%s), (addr=%s)",
-           dpid_to_str(dp_id), address)
-
-
 # IPC message Processing
 class RFProcessor(IPC.IPCMessageProcessor):
   def process(self, from_, to, channel, msg):
-    log.info("ipc received: " + str(msg))
     type_ = msg.get_type()
-    if type_ == DATAPATH_CONFIG:
-      flow_config(msg.get_dp_id(), msg.get_operation_id())
-    elif type_ == FLOW_MOD:
-      if (msg.get_is_removal()):
-        flow_delete(msg.get_dp_id(), 
-                    msg.get_address(), msg.get_netmask(), 
-                    msg.get_src_hwaddress())
+    if type_ == ROUTE_MOD:
+      dp = datapaths.get(msg.get_id())
+      ofmsg = create_flow_mod(dp, msg.get_mod(), msg.get_matches(),
+                              msg.get_actions(), msg.get_options())
+      try:
+        dp.send_msg(ofmsg)
+      except Exception as e:
+        log.info("Error sending RouteMod:")
+        log.info(type(e))
+        log.info(str(e))
       else:
-        flow_add(msg.get_dp_id(), 
-                 msg.get_address(), msg.get_netmask(), 
-                 msg.get_src_hwaddress(), msg.get_dst_hwaddress(), 
-                 msg.get_dst_port())
+        log.info("ofp_flow_mod was sent to datapath (dp_id = %s)",
+                 msg.get_id())
     if type_ == DATA_PLANE_MAP:
       table.update_dp_port(msg.get_dp_id(), msg.get_dp_port(),
       msg.get_vs_id(), msg.get_vs_port())
