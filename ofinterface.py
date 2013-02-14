@@ -1,4 +1,5 @@
 from rflib.defs import *
+from binascii import *
 from rflib.types.Match import * 
 from rflib.types.Action import *
 from rflib.types.Option import *
@@ -58,6 +59,12 @@ def add_matches(flow_mod, matches):
       mask = value & ((1 << 32) - 1)
       flow_mod.match.set_dl_type(ETHERTYPE_IP)
       flow_mod.match.set_ipv4_dst_masked(addr, mask)
+    elif match['type'] == RFMT_IPV6:
+      v = match['value']
+      addr = tuple((ord(v[i]) << 8) | ord(v[i + 1]) for i in range(0, 16, 2))
+      mask = tuple((ord(v[i]) << 8) | ord(v[i + 1]) for i in range(16, 32, 2))
+      flow_mod.match.set_dl_type(ETHERTYPE_IPV6)
+      flow_mod.match.set_ipv6_dst_masked(addr, mask)
     elif match['type'] == RFMT_ETHERNET:
       flow_mod.match.set_dl_dst(match['value'])
     elif match['type'] == RFMT_ETHERTYPE:
