@@ -6,7 +6,7 @@ from rflib.types.Option import *
 
 def create_default_flow_mod(dp, cookie=0, cookie_mask=0, table_id=0,
                             command=None, idle_timeout=0, hard_timeout=0,
-                            priority=OFP_DEFAULT_PRIORITY, 
+                            priority=PRIORITY_LOWEST,
                             buffer_id=0xffffffff, match=None, actions=None,
                             inst_type=None, out_port=None, out_group=None,
                             flags=0, inst=[]):
