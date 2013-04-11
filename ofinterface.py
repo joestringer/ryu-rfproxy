@@ -111,4 +111,5 @@ def add_options(flow_mod, options):
 
 def send_pkt_out(dp, port, msg):
   actions = [dp.ofproto_parser.OFPActionOutput(port, len(msg)), ]
-  dp.send_packet_out(buffer_id=0xffffffff, in_port=dp.ofproto.OFPP_ANY, actions=actions, data=msg)  
+  dp.send_packet_out(buffer_id=0xffffffff, in_port=dp.ofproto.OFPP_ANY,
+                     actions=actions, data=msg)

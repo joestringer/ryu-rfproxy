@@ -19,12 +19,11 @@ from ryu.lib.mac import *
 from ryu.lib.ip import *
 from ryu.lib.dpid import *
 from ryu.controller import dpset
-                                              
+
 log = logging.getLogger('ryu.app.rfproxy')
 
 ADD = 1
 DEL = 2
-TMP = 3
 
 #Datapath <-> dp_id association
 class Datapaths:
