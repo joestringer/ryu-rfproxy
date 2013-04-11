@@ -1,12 +1,13 @@
 import struct
 import logging
+import gevent
 
 import pymongo as mongo
 
 from ofinterface import *
 
 import rflib.ipc.IPC as IPC
-import rflib.ipc.ryu_MongoIPC as MongoIPC
+import rflib.ipc.MongoIPC as MongoIPC
 from rflib.ipc.RFProtocol import *
 from rflib.ipc.RFProtocolFactory import RFProtocolFactory
 from rflib.defs import *
@@ -86,8 +87,12 @@ class Table:
     # If a packet comes and matches the invalid mapping, it can be redirected
     # to the wrong places. We have to fix this.
 
+def gevent_thread_wrapper(target, args=()):
+    return gevent.spawn(target, *args)
+
 ID = 0
-ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, str(ID))
+ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, str(ID),
+                                      gevent_thread_wrapper, gevent.sleep)
 table = Table()
 datapaths = Datapaths()
 
@@ -122,9 +127,10 @@ class RFProxy(app_manager.RyuApp):
 
   def __init__(self, *args, **kwargs):
     super(RFProxy, self).__init__(*args, **kwargs)
-    ipc.listen(RFSERVER_RFPROXY_CHANNEL, RFProtocolFactory(), RFProcessor(), True)
+    ipc.listen(RFSERVER_RFPROXY_CHANNEL, RFProtocolFactory(), RFProcessor(),
+               False)
     log.info("RFProxy running.")
-             
+
   #Event handlers
   @set_ev_cls(dpset.EventDP, dpset.DPSET_EV_DISPATCHER)
   def handler_datapath(self, ev):
