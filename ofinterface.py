@@ -1,8 +1,12 @@
+import logging
+
 from rflib.defs import *
 from binascii import *
 from rflib.types.Match import * 
 from rflib.types.Action import *
 from rflib.types.Option import *
+
+log = logging.getLogger('ryu.app.rfproxy')
 
 def create_default_flow_mod(dp, cookie=0, cookie_mask=0, table_id=0,
                             command=None, idle_timeout=0, hard_timeout=0,
@@ -77,6 +81,11 @@ def add_matches(flow_mod, matches):
     elif match['type'] == RFMT_TP_DST:
       flow_mod.match.set_ip_proto(IPPROTO_TCP)
       flow_mod.match.set_tcp_dst(bin_to_int(match['value']))
+    elif match.optional():
+        log.info("Dropping unsupported Match (type: %s)" % match._type)
+    else:
+        log.warning("Failed to serialise Match (type: %s)" % match._type)
+        return
 
 def add_actions(flow_mod, action_tlvs):
   parser = flow_mod.datapath.ofproto_parser
@@ -95,6 +104,11 @@ def add_actions(flow_mod, action_tlvs):
       dstMac = action['value']
       dst = parser.OFPMatchField.make(ofproto.OXM_OF_ETH_DST, dstMac)
       actions.append(parser.OFPActionSetField(dst))
+    elif action.optional():
+        log.info("Dropping unsupported Action (type: %s)" % action._type)
+    else:
+        log.warning("Failed to serialise Action (type: %s)" % action._type)
+        return
   inst = parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)
   flow_mod.instructions = [inst]
 
@@ -108,6 +122,11 @@ def add_options(flow_mod, options):
       flow_mod.hard_timeout = bin_to_int(option['value'])
     elif option['type'] == RFOT_CT_ID:
       pass
+    elif option.optional():
+        log.info("Dropping unsupported Option (type: %s)" % option._type)
+    else:
+        log.warning("Failed to serialise Option (type: %s)" % option._type)
+        return
 
 def send_pkt_out(dp, port, msg):
   actions = [dp.ofproto_parser.OFPActionOutput(port, len(msg)), ]
