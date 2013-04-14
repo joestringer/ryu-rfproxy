@@ -144,7 +144,7 @@ class RFProxy(app_manager.RyuApp):
           msg = DatapathPortRegister(dp_id=dpid, dp_port=port)
           ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
           log.info("Registering datapath port (dp_id=%s, dp_port=%d)", dpid_to_str(dpid), port)
-    else:                  
+    elif dpid is not None:
       log.info("Datapath is down (dp_id=%s)", dpid_to_str(dpid))
       datapaths.unregister(dp)
       table.delete_dp(dpid)
