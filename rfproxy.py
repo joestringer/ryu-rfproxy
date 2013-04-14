@@ -17,7 +17,6 @@ from ryu.controller import ofp_event
 from ryu.controller.handler import *
 from ryu.ofproto import ofproto_v1_2
 from ryu.lib.mac import *
-from ryu.lib.ip import *
 from ryu.lib.dpid import *
 from ryu.controller import dpset
 
