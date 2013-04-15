@@ -87,7 +87,7 @@ class Table:
     # to the wrong places. We have to fix this.
 
 def gevent_thread_wrapper(target, args=()):
-    return gevent.spawn(target, *args)
+    return gevent.Greenlet(target, *args)
 
 ID = 0
 ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, str(ID),
