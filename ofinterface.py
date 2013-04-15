@@ -82,6 +82,8 @@ def add_matches(flow_mod, matches):
     elif match._type == RFMT_TP_DST:
       flow_mod.match.set_ip_proto(IPPROTO_TCP)
       flow_mod.match.set_tcp_dst(bin_to_int(match._value))
+    elif match._type == RFMT_IN_PORT:
+      flow_mod.match.set_in_port(bin_to_int(match._value))
     elif TLV.optional(match):
         log.info("Dropping unsupported Match (type: %s)" % match._type)
     else:
