@@ -56,32 +56,33 @@ def add_command(flow_mod, mod):
     flow_mod.command = flow_mod.datapath.ofproto.OFPFC_DELETE_STRICT
 
 def add_matches(flow_mod, matches):
-  for match in matches:
-    if match['type'] == RFMT_IPV4:
-      value = bin_to_int(match['value'])
+  for m in matches:
+    match = Match.from_dict(m)
+    if match._type == RFMT_IPV4:
+      value = bin_to_int(match._value)
       addr = value >> 32
       mask = value & ((1 << 32) - 1)
       flow_mod.match.set_dl_type(ETHERTYPE_IP)
       flow_mod.match.set_ipv4_dst_masked(addr, mask)
-    elif match['type'] == RFMT_IPV6:
-      v = match['value']
+    elif match._type == RFMT_IPV6:
+      v = match._value
       addr = tuple((ord(v[i]) << 8) | ord(v[i + 1]) for i in range(0, 16, 2))
       mask = tuple((ord(v[i]) << 8) | ord(v[i + 1]) for i in range(16, 32, 2))
       flow_mod.match.set_dl_type(ETHERTYPE_IPV6)
       flow_mod.match.set_ipv6_dst_masked(addr, mask)
-    elif match['type'] == RFMT_ETHERNET:
-      flow_mod.match.set_dl_dst(match['value'])
-    elif match['type'] == RFMT_ETHERTYPE:
-      flow_mod.match.set_dl_type(bin_to_int(match['value']))
-    elif match['type'] == RFMT_NW_PROTO:
-      flow_mod.match.set_ip_proto(bin_to_int(match['value']))
-    elif match['type'] == RFMT_TP_SRC:
+    elif match._type == RFMT_ETHERNET:
+      flow_mod.match.set_dl_dst(match._value)
+    elif match._type == RFMT_ETHERTYPE:
+      flow_mod.match.set_dl_type(bin_to_int(match._value))
+    elif match._type == RFMT_NW_PROTO:
+      flow_mod.match.set_ip_proto(bin_to_int(match._value))
+    elif match._type == RFMT_TP_SRC:
       flow_mod.match.set_ip_proto(IPPROTO_TCP)
-      flow_mod.match.set_tcp_src(bin_to_int(match['value']))
-    elif match['type'] == RFMT_TP_DST:
+      flow_mod.match.set_tcp_src(bin_to_int(match._value))
+    elif match._type == RFMT_TP_DST:
       flow_mod.match.set_ip_proto(IPPROTO_TCP)
-      flow_mod.match.set_tcp_dst(bin_to_int(match['value']))
-    elif match.optional():
+      flow_mod.match.set_tcp_dst(bin_to_int(match._value))
+    elif TLV.optional(match):
         log.info("Dropping unsupported Match (type: %s)" % match._type)
     else:
         log.warning("Failed to serialise Match (type: %s)" % match._type)
@@ -91,17 +92,18 @@ def add_actions(flow_mod, action_tlvs):
   parser = flow_mod.datapath.ofproto_parser
   ofproto = flow_mod.datapath.ofproto
   actions = []
-  for action in action_tlvs:
-    if action['type'] == RFAT_OUTPUT:
-      port = bin_to_int(action['value'])
+  for a in action_tlvs:
+    action = Action.from_dict(a)
+    if action._type == RFAT_OUTPUT:
+      port = bin_to_int(action._value)
       a = parser.OFPActionOutput(port, ofproto.OFPCML_MAX)
       actions.append(a)
-    elif action['type'] == RFAT_SET_ETH_SRC:
-      srcMac = action['value']
+    elif action._type == RFAT_SET_ETH_SRC:
+      srcMac = action._value
       src = parser.OFPMatchField.make(ofproto.OXM_OF_ETH_SRC, srcMac)
       actions.append(parser.OFPActionSetField(src))
-    elif action['type'] == RFAT_SET_ETH_DST:
-      dstMac = action['value']
+    elif action._type == RFAT_SET_ETH_DST:
+      dstMac = action._value
       dst = parser.OFPMatchField.make(ofproto.OXM_OF_ETH_DST, dstMac)
       actions.append(parser.OFPActionSetField(dst))
     elif action.optional():
@@ -113,14 +115,15 @@ def add_actions(flow_mod, action_tlvs):
   flow_mod.instructions = [inst]
 
 def add_options(flow_mod, options):
-  for option in options:
-    if option['type'] == RFOT_PRIORITY:
-      flow_mod.priority = bin_to_int(option['value'])
-    elif option['type'] == RFOT_IDLE_TIMEOUT:
-      flow_mod.idle_timeout = bin_to_int(option['value'])
-    elif option['type'] == RFOT_HARD_TIMEOUT:
-      flow_mod.hard_timeout = bin_to_int(option['value'])
-    elif option['type'] == RFOT_CT_ID:
+  for o in options:
+    option = Option.from_dict(o)
+    if option._type == RFOT_PRIORITY:
+      flow_mod.priority = bin_to_int(option._value)
+    elif option._type == RFOT_IDLE_TIMEOUT:
+      flow_mod.idle_timeout = bin_to_int(option._value)
+    elif option._type == RFOT_HARD_TIMEOUT:
+      flow_mod.hard_timeout = bin_to_int(option._value)
+    elif option._type == RFOT_CT_ID:
       pass
     elif option.optional():
         log.info("Dropping unsupported Option (type: %s)" % option._type)
