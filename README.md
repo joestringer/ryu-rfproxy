@@ -19,11 +19,11 @@ all of its dependencies is as follows:
 
 1) Clone RouteFlow
 
-```git clone git@github.com:joestringer/RouteFlow.git```
+```$ git clone git@github.com:joestringer/RouteFlow.git```
 
 2) Fetch dependencies and install VMs (This will clone this repository)
 
-```RouteFlow/build.sh -i ryu```
+```$ RouteFlow/build.sh -i ryu```
 
 Running
 -------
@@ -32,7 +32,7 @@ RouteFlow usually supplies a script to run all of the components in the
 correct order. If you want to run ryu-rfproxy, load the app by using
 ryu-manager in the RouteFlow directory:
 
-```cd RouteFlow; ryu-manager ryu-rfproxy/rfproxy.py```
+```$ cd RouteFlow; ryu-manager ryu-rfproxy/rfproxy.py```
 
 License
 -------
