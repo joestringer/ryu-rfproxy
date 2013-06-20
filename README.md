@@ -19,7 +19,7 @@ all of its dependencies is as follows:
 
 1) Clone RouteFlow
 
-```$ git clone git@github.com:joestringer/RouteFlow.git```
+```$ git clone git@github.com:routeflow/RouteFlow.git```
 
 2) Fetch dependencies and install VMs (This will clone this repository)
 
