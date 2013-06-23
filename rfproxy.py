@@ -1,6 +1,5 @@
 import struct
 import logging
-import gevent
 
 import pymongo as mongo
 
@@ -18,6 +17,7 @@ from ryu.controller.handler import *
 from ryu.ofproto import ofproto_v1_2
 from ryu.lib.mac import *
 from ryu.lib.dpid import *
+from ryu.lib import hub
 from ryu.controller import dpset
 
 log = logging.getLogger('ryu.app.rfproxy')
@@ -86,12 +86,14 @@ class Table:
     # If a packet comes and matches the invalid mapping, it can be redirected
     # to the wrong places. We have to fix this.
 
-def gevent_thread_wrapper(target, args=()):
-    return gevent.Greenlet(target, *args)
+def hub_thread_wrapper(target, args=()):
+    result = hub.spawn(target, *args)
+    result.start = lambda: target
+    return result
 
 ID = 0
 ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, str(ID),
-                                      gevent_thread_wrapper, gevent.sleep)
+                                      hub_thread_wrapper, hub.sleep)
 table = Table()
 datapaths = Datapaths()
 
