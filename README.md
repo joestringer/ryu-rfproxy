@@ -9,7 +9,7 @@ Dependencies
 -----------
 
 * RouteFlow
-* Ryu
+* Ryu-2.0
 
 Building
 --------
