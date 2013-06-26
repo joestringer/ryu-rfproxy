@@ -34,6 +34,19 @@ ryu-manager in the RouteFlow directory:
 
 ```$ cd RouteFlow; ryu-manager ryu-rfproxy/rfproxy.py```
 
+FAQ
+---
+
+Q. When I run RouteFlow, I get messages about the database connection failing:
+
+```ovs-vsctl: unix:/usr/local/var/run/openvswitch/db.sock: database connection failed (No such file or directory)```
+
+A. Check that ovsdb-server and ovs-vswitchd are up and running correctly. If
+you're using a version of Open vSwitch compiled from source, you may need to
+start them manually. Open vSwitch's
+[http://git.openvswitch.org/cgi-bin/gitweb.cgi?p=openvswitch;a=blob_plain;f=INSTALL;hb=HEAD](INSTALL)
+file has more information on this topic.
+
 License
 -------
 
