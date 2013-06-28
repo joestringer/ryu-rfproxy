@@ -152,3 +152,28 @@ def send_pkt_out(dp, port, msg_data):
     packet_out = dp.ofproto_parser.OFPPacketOut(dp, buffer_id, in_port,
                                                 actions, msg_data)
     dp.send_msg(packet_out)
+
+
+'''instruction should be one of OFPGC_ADD, OFPGC_MODIFY, OFPGC_DELETE'''
+def conf_flow_group_table(dp, group_id, dst_port=None, instruction=None):
+    OFPActionOutput = dp.ofproto_parser.OFPActionOutput
+    OFPBucket = dp.ofproto_parser.OFPBucket
+    OFPGroupMod = dp.ofproto_parser.OFPGroupMod
+    len_ = dp.ofproto.OFP_BUCKET_SIZE
+    weight = 1
+    watch_port = 0
+    watch_group = 0
+    buckets = []
+    type_group_table = dp.ofproto.OFPGT_SELECT
+
+    if instruction == OFPGC_ADD:
+        actions = [OFPActionOutput(dst_port, dp.ofproto.OFPCML_NO_BUFFER)]
+        buckets = [OFPBucket(len_, weight, watch_port, watch_group, actions)]
+    elif instruction == OFPGC_MODIFY:
+        for port in dst_port:
+            actions = [OFPActionOutput(port, dp.ofproto.OFPCML_NO_BUFFER)]
+            buckets.append(OFPBucket(len_, weight, watch_port, watch_group,
+                                     actions))
+
+    msg = OFPGroupMod(dp, instruction, type_group_table, group_id, buckets)
+    dp.send_msg(msg)
