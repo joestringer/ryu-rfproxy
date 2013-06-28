@@ -154,6 +154,21 @@ def send_pkt_out(dp, port, msg_data):
     dp.send_msg(packet_out)
 
 
+'''instruction should be one of OFPMC_ADD, OFPMC_MODIFY, OFPMC_DELETE'''
+def conf_flow_meter(dp, meter_id, band_rate=0, instruction=None):
+    OFPMeterBandDrop = dp.ofproto_parser.OFPMeterBandDrop
+    OFPMeterMod = dp.ofproto_parser.OFPMeterMod
+
+    type_ = dp.ofproto.OFPMBT_DROP
+    len_ = dp.ofproto.OFP_METER_BAND_DROP_SIZE
+    flags_ = dp.ofproto.OFPMF_KBPS
+    band_rate = band_rate
+
+    bands = [OFPMeterBandDrop(type_, len_, band_rate, 0)]
+    msg = OFPMeterMod(dp, command, flags_, meter_id, bands)
+    dp.send_msg(msg)
+
+
 '''instruction should be one of OFPGC_ADD, OFPGC_MODIFY, OFPGC_DELETE'''
 def conf_flow_group_table(dp, group_id, dst_port=None, instruction=None):
     OFPActionOutput = dp.ofproto_parser.OFPActionOutput
