@@ -22,9 +22,6 @@ from ryu.controller import dpset
 
 log = logging.getLogger('ryu.app.rfproxy')
 
-ADD = 1
-DEL = 2
-
 
 #Datapath <-> dp_id association
 class Datapaths:
