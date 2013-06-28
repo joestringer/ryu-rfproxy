@@ -6,6 +6,7 @@ from rflib.types.Match import *
 from rflib.types.Action import *
 from rflib.types.Option import *
 
+OFP_BUFFER_NONE = 0xffffffff
 log = logging.getLogger('ryu.app.rfproxy')
 
 
@@ -143,7 +144,11 @@ def add_options(flow_mod, options):
             return
 
 
-def send_pkt_out(dp, port, msg):
-    actions = [dp.ofproto_parser.OFPActionOutput(port, len(msg)), ]
-    dp.send_packet_out(buffer_id=0xffffffff, in_port=dp.ofproto.OFPP_ANY,
-                       actions=actions, data=msg)
+def send_pkt_out(dp, port, msg_data):
+    actions = []
+    actions.append(dp.ofproto_parser.OFPActionOutput(port, len(msg_data)))
+    buffer_id = OFP_BUFFER_NONE
+    in_port = dp.ofproto.OFPP_ANY
+    packet_out = dp.ofproto_parser.OFPPacketOut(dp, buffer_id, in_port,
+                                                actions, msg_data)
+    dp.send_msg(packet_out)
