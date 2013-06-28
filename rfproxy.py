@@ -15,7 +15,7 @@ from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import *
 from ryu.topology import switches, event
-from ryu.ofproto import ofproto_v1_2 as ofproto
+from ryu.ofproto import ofproto_v1_3 as ofproto
 from ryu.lib.mac import *
 from ryu.lib.dpid import *
 from ryu.lib import hub
@@ -107,7 +107,7 @@ class RFProcessor(IPC.IPCMessageProcessor):
 class RFProxy(app_manager.RyuApp):
     #Listen to the Ryu topology change events
     _CONTEXTS = {
-                'switches': switches.Switches,
+                'switches': switches_v1_3.Switches,
                 }
     OFP_VERSIONS = [ofproto.OFP_VERSION]
 
