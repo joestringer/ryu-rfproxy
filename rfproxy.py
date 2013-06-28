@@ -15,7 +15,7 @@ from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import *
 from ryu.topology import switches, event
-from ryu.ofproto import ofproto_v1_2
+from ryu.ofproto import ofproto_v1_2 as ofproto
 from ryu.lib.mac import *
 from ryu.lib.dpid import *
 from ryu.lib import hub
@@ -109,7 +109,7 @@ class RFProxy(app_manager.RyuApp):
     _CONTEXTS = {
                 'switches': switches.Switches,
                 }
-    OFP_VERSIONS = [ofproto_v1_2.OFP_VERSION]
+    OFP_VERSIONS = [ofproto.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
         super(RFProxy, self).__init__(*args, **kwargs)
@@ -134,7 +134,7 @@ class RFProxy(app_manager.RyuApp):
         dpid = dp.id
         log.debug("INFO:rfproxy:Datapath is up (dp_id=%d)", dpid)
         for port in ports:
-            if port.port_no <= ofproto_v1_2.OFPP_MAX:
+            if port.port_no <= dp.ofproto.OFPP_MAX:
                 msg = DatapathPortRegister(ct_id=self.ID, dp_id=dpid,
                                            dp_port=port.port_no)
                 self.ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
@@ -158,7 +158,7 @@ class RFProxy(app_manager.RyuApp):
         pkt, _ = ethernet.parser(msg.data)
 
         for f in msg.match.fields:
-            if f.header == ofproto_v1_2.OXM_OF_IN_PORT:
+            if f.header == dp.ofproto.OXM_OF_IN_PORT:
                 in_port = f.value
 
         # If we have a mapping packet, inform RFServer through a Map message
