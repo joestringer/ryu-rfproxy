@@ -14,6 +14,7 @@ from rflib.defs import *
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import *
+from ryu.topology import switches, event
 from ryu.ofproto import ofproto_v1_2
 from ryu.lib.mac import *
 from ryu.lib.dpid import *
@@ -21,24 +22,6 @@ from ryu.lib import hub
 from ryu.lib.packet.ethernet import ethernet
 
 log = logging.getLogger('ryu.app.rfproxy')
-
-
-#Datapath <-> dp_id association
-class Datapaths:
-    def __init__(self):
-        self.dps = {}     # datapath_id => class Datapath
-
-    def register(self, dp):
-        assert dp.id is not None
-        assert dp.id not in self.dps
-        self.dps[dp.id] = dp
-
-    def unregister(self, dp):
-        if dp.id in self.dps:
-            del self.dps[dp.id]
-
-    def get(self, dp_id):
-        return self.dps.get(dp_id, None)
 
 
 # Association table
@@ -91,15 +74,19 @@ def hub_thread_wrapper(target, args=()):
         return result
 
 table = Table()
-datapaths = Datapaths()
 
 
 # IPC message Processing
 class RFProcessor(IPC.IPCMessageProcessor):
+
+    def __init__(self, switches):
+        self._switches = switches
+
     def process(self, from_, to, channel, msg):
         type_ = msg.get_type()
         if type_ == ROUTE_MOD:
-            dp = datapaths.get(msg.get_id())
+            switch = self._switches._get_switch(msg.get_id())
+            dp = switch.dp
             ofmsg = create_flow_mod(dp, msg.get_mod(), msg.get_matches(),
                                     msg.get_actions(), msg.get_options())
             try:
@@ -118,44 +105,50 @@ class RFProcessor(IPC.IPCMessageProcessor):
 
 
 class RFProxy(app_manager.RyuApp):
-    #Listen to DPSet event which defines datapath enter=true or enter=false
-    _CONTEXTS = {'dpset': dpset.DPSet}
-
+    #Listen to the Ryu topology change events
+    _CONTEXTS = {
+                'switches': switches.Switches,
+                }
     OFP_VERSIONS = [ofproto_v1_2.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
         super(RFProxy, self).__init__(*args, **kwargs)
 
-        ID = 0
+        self.ID = 0
         self.ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS,
-                                                   MONGO_DB_NAME, str(ID),
+                                                   MONGO_DB_NAME, str(self.ID),
                                                    hub_thread_wrapper,
                                                    hub.sleep)
+        self.switches = kwargs['switches']
+        self.rfprocess = RFProcessor(self.switches)
+
         self.ipc.listen(RFSERVER_RFPROXY_CHANNEL, RFProtocolFactory(),
-                        RFProcessor(), False)
+                        self.rfprocess, False)
         log.info("RFProxy running.")
 
     #Event handlers
-    @set_ev_cls(dpset.EventDP, dpset.DPSET_EV_DISPATCHER)
-    def handler_datapath(self, ev):
-        dp = ev.dp
+    @set_ev_cls(event.EventSwitchEnter, MAIN_DISPATCHER)
+    def handler_datapath_enter(self, ev):
+        dp = ev.switch.dp
+        ports = ev.switch.ports
         dpid = dp.id
-        ports = dp.ports
-        if ev.enter:
-            log.info("Datapath is up (dp_id=%s)", dpid_to_str(dpid))
-            datapaths.register(dp)
-            for port in ports:
-                if port <= ofproto_v1_2.OFPP_MAX:
-                    msg = DatapathPortRegister(dp_id=dpid, dp_port=port)
-                    self.ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
-                    log.info("Registering datapath port (dp_id=%s,"
-                             "dp_port=%d)", dpid_to_str(dpid), port)
-        elif dpid is not None:
-            log.info("Datapath is down (dp_id=%s)", dpid_to_str(dpid))
-            datapaths.unregister(dp)
-            table.delete_dp(dpid)
-            msg = DatapathDown(dp_id=dpid)
-            self.ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
+        log.debug("INFO:rfproxy:Datapath is up (dp_id=%d)", dpid)
+        for port in ports:
+            if port.port_no <= ofproto_v1_2.OFPP_MAX:
+                msg = DatapathPortRegister(ct_id=self.ID, dp_id=dpid,
+                                           dp_port=port.port_no)
+                self.ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
+                log.info("Registering datapath port (dp_id=%s, dp_port=%d)",
+                         dpid_to_str(dpid), port.port_no)
+
+    @set_ev_cls(event.EventSwitchLeave, MAIN_DISPATCHER)
+    def handler_datapath_leave(self, ev):
+        dp = ev.switch.dp
+        dpid = dp.id
+        log.info("Datapath is down (dp_id=%d)", dpid)
+        table.delete_dp(dpid)
+        msg = DatapathDown(ct_id=self.ID, dp_id=dpid)
+        self.ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def on_packet_in(self, ev):
@@ -184,9 +177,14 @@ class RFProxy(app_manager.RyuApp):
             dp_port = table.vs_port_to_dp_port(dpid, in_port)
             if dp_port is not None:
                 dp_id, dp_port = dp_port
-                send_pkt_out(datapaths.get(dp_id), dp_port, msg.data)
-                log.info("forwarding packet from rfvs (dp_id: %s, "
-                         "dp_port: %d)", dpid_to_str(dp_id), dp_port)
+                switch = self.switches._get_switch(dp_id)
+                if switch is not None:
+                    send_pkt_out(switch.dp, dp_port, msg.data)
+                    log.debug("forwarding packet from rfvs (dp_id: %s, "
+                             "dp_port: %d)", dpid_to_str(dp_id), dp_port)
+                else:
+                    log.warn("dropped packet from rfvs (dp_id: %s, "
+                             "dp_port: %d)", dpid_to_str(dp_id), dp_port)
             else:
                 log.info("Unmapped RFVS port (vs_id=%s, vs_port=%d)",
                          dpid_to_str(dpid), in_port)
@@ -195,9 +193,14 @@ class RFProxy(app_manager.RyuApp):
             vs_port = table.dp_port_to_vs_port(dpid, in_port)
             if vs_port is not None:
                 vs_id, vs_port = vs_port
-                send_pkt_out(datapaths.get(vs_id), vs_port, msg.data)
-                log.info("forwarding packet to rfvs (vs_id: %s, vs_port: %d)",
-                         dpid_to_str(vs_id), vs_port)
+                switch = self.switches._get_switch(vs_id)
+                if switch is not None:
+                    send_pkt_out(switch.dp, vs_port, msg.data)
+                    log.debug("forwarding packet to rfvs (vs_id: %s, "
+                              "vs_port: %d)", dpid_to_str(vs_id), vs_port)
+                else:
+                    log.warn("dropped packet to rfvs (vs_id: %s, "
+                             "vs_port: %d)", dpid_to_str(dp_id), dp_port)
             else:
                 log.info("Unmapped datapath port (dp_id=%s, dp_port=%d)",
                          dpid_to_str(dpid), in_port)
