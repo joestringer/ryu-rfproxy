@@ -18,7 +18,7 @@ from ryu.ofproto import ofproto_v1_2
 from ryu.lib.mac import *
 from ryu.lib.dpid import *
 from ryu.lib import hub
-from ryu.controller import dpset
+from ryu.lib.packet.ethernet import ethernet
 
 log = logging.getLogger('ryu.app.rfproxy')
 
@@ -162,13 +162,14 @@ class RFProxy(app_manager.RyuApp):
         msg = ev.msg
         dp = msg.datapath
         dpid = dp.id
-        dst, src, _eth_type = struct.unpack_from('!6s6sH', buffer(msg.data), 0)
+        pkt, _ = ethernet.parser(msg.data)
+
         for f in msg.match.fields:
             if f.header == ofproto_v1_2.OXM_OF_IN_PORT:
                 in_port = f.value
 
         # If we have a mapping packet, inform RFServer through a Map message
-        if _eth_type == RF_ETH_PROTO:
+        if pkt.ethertype == RF_ETH_PROTO:
             vm_id, vm_port = struct.unpack("QB", msg.data[14:23])
             log.info("Received mapping packet (vm_id=%s, vm_port=%d, "
                      "vs_id=%s, vs_port=%d)", format_id(vm_id), vm_port,
