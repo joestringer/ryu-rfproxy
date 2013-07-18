@@ -113,10 +113,10 @@ class RFProcessor(IPC.IPCMessageProcessor):
                 log.info(str(e))
             else:
                 log.info("ofp_flow_mod was sent to datapath (dp_id = %s)",
-                                 msg.get_id())
+                         msg.get_id())
         if type_ == DATA_PLANE_MAP:
             table.update_dp_port(msg.get_dp_id(), msg.get_dp_port(),
-            msg.get_vs_id(), msg.get_vs_port())
+                                 msg.get_vs_id(), msg.get_vs_port())
         return True
 
 

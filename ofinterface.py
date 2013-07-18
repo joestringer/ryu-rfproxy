@@ -73,9 +73,9 @@ def add_matches(flow_mod, matches):
         elif match._type == RFMT_IPV6:
             v = match._value
             addr = tuple((ord(v[i]) << 8) | ord(v[i + 1])
-                    for i in range(0, 16, 2))
+                         for i in range(0, 16, 2))
             mask = tuple((ord(v[i]) << 8) | ord(v[i + 1])
-                    for i in range(16, 32, 2))
+                         for i in range(16, 32, 2))
             flow_mod.match.set_dl_type(ETHERTYPE_IPV6)
             flow_mod.match.set_ipv6_dst_masked(addr, mask)
         elif match._type == RFMT_ETHERNET:
