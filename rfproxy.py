@@ -73,14 +73,13 @@ def hub_thread_wrapper(target, args=()):
         result.start = lambda: target
         return result
 
-table = Table()
-
 
 # IPC message Processing
 class RFProcessor(IPC.IPCMessageProcessor):
 
-    def __init__(self, switches):
+    def __init__(self, switches, table):
         self._switches = switches
+        self.table = table
 
     def process(self, from_, to, channel, msg):
         type_ = msg.get_type()
@@ -99,8 +98,8 @@ class RFProcessor(IPC.IPCMessageProcessor):
                 log.info("ofp_flow_mod was sent to datapath (dp_id = %s)",
                          msg.get_id())
         if type_ == DATA_PLANE_MAP:
-            table.update_dp_port(msg.get_dp_id(), msg.get_dp_port(),
-                                 msg.get_vs_id(), msg.get_vs_port())
+            self.table.update_dp_port(msg.get_dp_id(), msg.get_dp_port(),
+                                      msg.get_vs_id(), msg.get_vs_port())
         return True
 
 
@@ -115,12 +114,13 @@ class RFProxy(app_manager.RyuApp):
         super(RFProxy, self).__init__(*args, **kwargs)
 
         self.ID = 0
+        self.table = Table()
         self.ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS,
                                                    MONGO_DB_NAME, str(self.ID),
                                                    hub_thread_wrapper,
                                                    hub.sleep)
         self.switches = kwargs['switches']
-        self.rfprocess = RFProcessor(self.switches)
+        self.rfprocess = RFProcessor(self.switches, self.table)
 
         self.ipc.listen(RFSERVER_RFPROXY_CHANNEL, RFProtocolFactory(),
                         self.rfprocess, False)
@@ -146,7 +146,7 @@ class RFProxy(app_manager.RyuApp):
         dp = ev.switch.dp
         dpid = dp.id
         log.info("Datapath is down (dp_id=%d)", dpid)
-        table.delete_dp(dpid)
+        self.table.delete_dp(dpid)
         msg = DatapathDown(ct_id=self.ID, dp_id=dpid)
         self.ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
 
@@ -174,7 +174,7 @@ class RFProxy(app_manager.RyuApp):
 
         # If the packet came from RFVS, redirect it to the right switch port
         if is_rfvs(dpid):
-            dp_port = table.vs_port_to_dp_port(dpid, in_port)
+            dp_port = self.table.vs_port_to_dp_port(dpid, in_port)
             if dp_port is not None:
                 dp_id, dp_port = dp_port
                 switch = self.switches._get_switch(dp_id)
@@ -190,7 +190,7 @@ class RFProxy(app_manager.RyuApp):
                          dpid_to_str(dpid), in_port)
         # If the packet came from a switch, redirect it to the right RFVS port
         else:
-            vs_port = table.dp_port_to_vs_port(dpid, in_port)
+            vs_port = self.table.dp_port_to_vs_port(dpid, in_port)
             if vs_port is not None:
                 vs_id, vs_port = vs_port
                 switch = self.switches._get_switch(vs_id)
