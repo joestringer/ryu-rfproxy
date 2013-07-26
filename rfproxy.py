@@ -189,11 +189,11 @@ class RFProxy(app_manager.RyuApp):
                 switch = self.switches._get_switch(dp_id)
                 if switch is not None:
                     send_pkt_out(switch.dp, dp_port, msg.data)
-                    log.debug("forwarding packet from rfvs (dp_id: %s, "
-                             "dp_port: %d)", dpid_to_str(dp_id), dp_port)
+                    log.debug("forwarding packet from rfvs (vs_id: %s, "
+                             "vs_port: %d)", dpid_to_str(dp_id), dp_port)
                 else:
-                    log.warn("dropped packet from rfvs (dp_id: %s, "
-                             "dp_port: %d)", dpid_to_str(dp_id), dp_port)
+                    log.warn("dropped packet from rfvs (vs_id: %s, "
+                             "vs_port: %d)", dpid_to_str(dp_id), dp_port)
             else:
                 log.info("Unmapped RFVS port (vs_id=%s, vs_port=%d)",
                          dpid_to_str(dpid), in_port)
@@ -205,11 +205,11 @@ class RFProxy(app_manager.RyuApp):
                 switch = self.switches._get_switch(vs_id)
                 if switch is not None:
                     send_pkt_out(switch.dp, vs_port, msg.data)
-                    log.debug("forwarding packet to rfvs (vs_id: %s, "
-                              "vs_port: %d)", dpid_to_str(vs_id), vs_port)
+                    log.debug("forwarding packet to rfvs (dp_id: %s, "
+                              "dp_port: %d)", dpid_to_str(vs_id), vs_port)
                 else:
-                    log.warn("dropped packet to rfvs (vs_id: %s, "
-                             "vs_port: %d)", dpid_to_str(dp_id), dp_port)
+                    log.warn("dropped packet to rfvs (dp_id: %s, "
+                             "dp_port: %d)", dpid_to_str(dp_id), dp_port)
             else:
                 log.info("Unmapped datapath port (dp_id=%s, dp_port=%d)",
                          dpid_to_str(dpid), in_port)
