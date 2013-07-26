@@ -107,6 +107,8 @@ class RFProcessor(IPC.IPCMessageProcessor):
             log.info("Updating vs-dp association (vs_id=%s, vs_port=%i, "
                      "dp_id=%s, dp_port=%i" % (dpid_to_str(vs_id), vs_port,
                                                dpid_to_str(dp_id), dp_port))
+        else:
+            return False
         return True
 
 
