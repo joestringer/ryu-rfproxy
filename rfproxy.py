@@ -114,9 +114,7 @@ class RFProcessor(IPC.IPCMessageProcessor):
 
 class RFProxy(app_manager.RyuApp):
     #Listen to the Ryu topology change events
-    _CONTEXTS = {
-                'switches': switches.Switches,
-                }
+    _CONTEXTS = {'switches': switches.Switches}
     OFP_VERSIONS = [ofproto.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
