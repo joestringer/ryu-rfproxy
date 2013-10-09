@@ -1,12 +1,11 @@
 import struct
+import threading
 import logging
-
-import pymongo as mongo
 
 from ofinterface import *
 
 import rflib.ipc.IPC as IPC
-import rflib.ipc.MongoIPC as MongoIPC
+import rflib.ipc.IPCService as IPCService
 from rflib.ipc.RFProtocol import *
 from rflib.ipc.RFProtocolFactory import RFProtocolFactory
 from rflib.defs import *
@@ -16,6 +15,7 @@ from ryu.controller import ofp_event
 from ryu.controller.handler import *
 from ryu.topology import switches, event
 from ryu.ofproto import ofproto_v1_2 as ofproto
+from ryu.lib import hub
 from ryu.lib.mac import *
 from ryu.lib.dpid import *
 from ryu.lib import hub
@@ -68,10 +68,11 @@ class Table:
     # to the wrong places. We have to fix this.
 
 
-def hub_thread_wrapper(target, args=()):
-        result = hub.spawn(target, *args)
-        result.start = lambda: target
-        return result
+class HubThreading(object):
+    Thread = staticmethod(threading.Thread)
+    Event = staticmethod(hub.Event)
+    sleep = staticmethod(hub.sleep)
+    name = "HubThreading"
 
 
 # IPC message Processing
@@ -122,13 +123,10 @@ class RFProxy(app_manager.RyuApp):
 
         self.ID = 0
         self.table = Table()
-        self.ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS,
-                                                   MONGO_DB_NAME, str(self.ID),
-                                                   hub_thread_wrapper,
-                                                   hub.sleep)
         self.switches = kwargs['switches']
         self.rfprocess = RFProcessor(self.switches, self.table)
 
+        self.ipc = IPCService.for_proxy(str(self.ID), HubThreading)
         self.ipc.listen(RFSERVER_RFPROXY_CHANNEL, RFProtocolFactory(),
                         self.rfprocess, False)
         log.info("RFProxy running.")
