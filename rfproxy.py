@@ -131,20 +131,21 @@ class RFProxy(app_manager.RyuApp):
                         self.rfprocess, False)
         log.info("RFProxy running.")
 
+    def register_ports(self, dp, ports):
+        for port in ports:
+            if port.port_no <= dp.ofproto.OFPP_MAX:
+                msg = DatapathPortRegister(ct_id=self.ID, dp_id=dp.id,
+                                           dp_port=port.port_no)
+                self.ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
+                log.info("Registering datapath port (dp_id=%s, dp_port=%d)",
+                         dpid_to_str(dp.id), port.port_no)
+
     #Event handlers
     @set_ev_cls(event.EventSwitchEnter, MAIN_DISPATCHER)
     def handler_datapath_enter(self, ev):
         dp = ev.switch.dp
-        ports = ev.switch.ports
-        dpid = dp.id
-        log.debug("INFO:rfproxy:Datapath is up (dp_id=%d)", dpid)
-        for port in ports:
-            if port.port_no <= dp.ofproto.OFPP_MAX:
-                msg = DatapathPortRegister(ct_id=self.ID, dp_id=dpid,
-                                           dp_port=port.port_no)
-                self.ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
-                log.info("Registering datapath port (dp_id=%s, dp_port=%d)",
-                         dpid_to_str(dpid), port.port_no)
+        log.debug("INFO:rfproxy:Datapath is up (dp_id=%d)", dp.id)
+        register_ports(dp, ev.switch.ports)
 
     @set_ev_cls(event.EventSwitchLeave, MAIN_DISPATCHER)
     def handler_datapath_leave(self, ev):
