@@ -14,7 +14,7 @@ from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import *
 from ryu.topology import switches, event
-from ryu.ofproto import ofproto_v1_2 as ofproto
+from ryu.ofproto import ofproto_v1_3 as ofproto
 from ryu.lib import hub
 from ryu.lib.mac import *
 from ryu.lib.dpid import *
@@ -145,7 +145,18 @@ class RFProxy(app_manager.RyuApp):
     def handler_datapath_enter(self, ev):
         dp = ev.switch.dp
         log.debug("INFO:rfproxy:Datapath is up (dp_id=%d)", dp.id)
-        register_ports(dp, ev.switch.ports)
+        stats_request = dp.ofproto_parser.OFPPortDescStatsRequest(dp, 0)
+        dp.send_msg(stats_request)
+
+    # TODO: update event handler for ryu > 2.0
+    #@set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
+    @set_ev_cls(ofp_event.EventOFPMultipartReply, MAIN_DISPATCHER)
+    def handler_stats_reply_handler(self, ev):
+        msg = ev.msg
+        if msg.type == ofproto.OFPMP_PORT_DESC:
+            dp = msg.datapath
+            ports = msg.body
+            register_ports(dp, ports)
 
     @set_ev_cls(event.EventSwitchLeave, MAIN_DISPATCHER)
     def handler_datapath_leave(self, ev):
